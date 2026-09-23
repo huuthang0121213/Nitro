@@ -1,0 +1,6 @@
+{
+  "name": "Nitro Grand Hotel",
+  "description": "Hệ thống đặt phòng và quản lý khách sạn Nitro Grand Hotel (24 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
