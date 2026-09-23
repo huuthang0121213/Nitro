@@ -47,8 +47,14 @@ import {
   UserRole,
 } from '../types';
 
-// Đọc địa chỉ Backend từ .env (Ví dụ: VITE_API_URL=http://localhost:5000)
-const API_URL = import.meta.env.VITE_API_URL || '';
+// Đọc địa chỉ Backend từ .env hoặc cấu hình Mock Mode
+// Nếu VITE_USE_MOCK=true hoặc không thiết lập VITE_API_URL -> luôn chạy Mock Data
+const IS_MOCK_CONFIGURED =
+  import.meta.env.VITE_USE_MOCK === 'true' ||
+  import.meta.env.VITE_USE_MOCK === true ||
+  !import.meta.env.VITE_API_URL;
+
+const API_URL = IS_MOCK_CONFIGURED ? '' : (import.meta.env.VITE_API_URL || '').trim();
 const SIMULATED_DELAY = 150;
 
 const delay = (ms: number = SIMULATED_DELAY) =>
@@ -91,27 +97,49 @@ export const authService = {
    */
   async login(credentials: { emailOrPhone: string; password: string }): Promise<LoginResponse> {
     if (API_URL) {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Đăng nhập không thành công');
+      try {
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(credentials),
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Đăng nhập không thành công');
+        }
+        const data: LoginResponse = await res.json();
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('nitro_user_role', data.user.role);
+        localStorage.setItem('nitro_current_user', JSON.stringify(data.user));
+        return data;
+      } catch (err: any) {
+        // Tự động nhận diện nếu backend chưa bật (Failed to fetch, connection refused)
+        const isNetworkFailure =
+          err?.name === 'TypeError' ||
+          err?.message?.includes('fetch') ||
+          err?.message?.includes('Network') ||
+          err?.message?.includes('Failed');
+
+        if (isNetworkFailure) {
+          console.warn('[API Service] Backend tại ' + API_URL + ' chưa phản hồi (' + err.message + '). Tự động chuyển tiếp đăng nhập bằng Mock Data.');
+        } else {
+          // Lỗi từ backend trả về (ví dụ sai mật khẩu) thì vẫn báo cho người dùng
+          throw err;
+        }
       }
-      const data: LoginResponse = await res.json();
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('nitro_user_role', data.user.role);
-      localStorage.setItem('nitro_current_user', JSON.stringify(data.user));
-      return data;
     }
 
     // Mock Mode Fallback khi Backend chưa bật
     await delay();
     const cleanInput = credentials.emailOrPhone.trim().toLowerCase();
     const matched = usersState.find(
-      (u) => u.email.toLowerCase() === cleanInput || u.phone === cleanInput
+      (u) =>
+        u.email.toLowerCase() === cleanInput ||
+        u.phone === cleanInput ||
+        (cleanInput === 'khachhang@nitrohotel.vn' && u.role === 'CUSTOMER') ||
+        (cleanInput === 'letan@nitrohotel.vn' && u.role === 'FRONT_DESK') ||
+        (cleanInput === 'quanly@nitrohotel.vn' && u.role === 'MANAGER') ||
+        (cleanInput === 'admin@nitrohotel.vn' && u.role === 'ADMIN')
     );
 
     if (!matched) {
@@ -157,20 +185,34 @@ export const authService = {
    */
   async register(data: { name: string; email: string; phone: string; password: string }): Promise<LoginResponse> {
     if (API_URL) {
-      const res = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Đăng ký không thành công');
+      try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || 'Đăng ký không thành công');
+        }
+        const result: LoginResponse = await res.json();
+        localStorage.setItem('auth_token', result.token);
+        localStorage.setItem('nitro_user_role', result.user.role);
+        localStorage.setItem('nitro_current_user', JSON.stringify(result.user));
+        return result;
+      } catch (err: any) {
+        const isNetworkFailure =
+          err?.name === 'TypeError' ||
+          err?.message?.includes('fetch') ||
+          err?.message?.includes('Network') ||
+          err?.message?.includes('Failed');
+
+        if (isNetworkFailure) {
+          console.warn('[API Service] Backend chưa bật (' + err.message + '). Tự động chuyển tiếp đăng ký Mock.');
+        } else {
+          throw err;
+        }
       }
-      const result: LoginResponse = await res.json();
-      localStorage.setItem('auth_token', result.token);
-      localStorage.setItem('nitro_user_role', result.user.role);
-      localStorage.setItem('nitro_current_user', JSON.stringify(result.user));
-      return result;
     }
 
     await delay();
@@ -200,11 +242,15 @@ export const authService = {
    */
   async getMe(): Promise<User> {
     if (API_URL) {
-      const res = await fetch(`${API_URL}/api/auth/me`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error('Phiên đăng nhập đã hết hạn');
-      return res.json();
+      try {
+        const res = await fetch(`${API_URL}/api/auth/me`, {
+          headers: getAuthHeaders(),
+        });
+        if (!res.ok) throw new Error('Phiên đăng nhập đã hết hạn');
+        return await res.json();
+      } catch (err: any) {
+        console.warn('[API Service] Không kết nối được Backend /api/auth/me, sử dụng Mock User.');
+      }
     }
 
     await delay(50);
@@ -216,7 +262,9 @@ export const authService = {
         // ignore
       }
     }
-    return usersState[0];
+    const savedRole = localStorage.getItem('nitro_user_role');
+    const matched = usersState.find((u) => u.role === savedRole);
+    return matched || usersState[0];
   },
 
   /**

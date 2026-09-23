@@ -608,7 +608,7 @@ export const MOCK_USERS: User[] = [
   {
     id: 'usr-customer',
     name: 'Nguyễn Văn An',
-    email: 'buiminhnhat2910@gmail.com',
+    email: 'khachhang@nitrohotel.vn',
     phone: '0901234567',
     role: 'CUSTOMER',
     status: 'ACTIVE',
