@@ -54,6 +54,7 @@ import { ShiftOverviewPage } from './pages/staff/ShiftOverviewPage';
 import { SystemSettingsPage } from './pages/staff/SystemSettingsPage';
 import { UsersPermissionsPage } from './pages/staff/UsersPermissionsPage';
 import { WalkInBookingPage } from './pages/staff/WalkInBookingPage';
+import { SmokeTestPage } from './pages/SmokeTestPage';
 
 export default function App() {
   return (
@@ -77,6 +78,9 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+          {/* QA & Smoke Testing Hub (TASK-15) */}
+          <Route path="/smoke-test" element={<SmokeTestPage />} />
 
           {/* Staff Facing Routes */}
           <Route path="/staff" element={<StaffLayout />}>

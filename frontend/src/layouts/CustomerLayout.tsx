@@ -458,12 +458,14 @@ export const CustomerLayout: React.FC = () => {
             <div>
               © 2026 Nitro Grand Hotel. Dự án Nhóm 7 — Nitro Hotel Booking System.
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
               <span>Điều khoản sử dụng</span>
               <span>•</span>
               <span>Chính sách quyền riêng tư</span>
               <span>•</span>
-              <span>Bảo mật dữ liệu</span>
+              <Link to="/smoke-test" className="text-[#C9A227] hover:underline font-medium">
+                Kiểm định Smoke Test (TASK-15) →
+              </Link>
             </div>
           </div>
         </div>
